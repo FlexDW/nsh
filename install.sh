@@ -1,46 +1,36 @@
 #!/bin/sh
 # nsh installer.
 #
-# Downloads the nsh binary, system prompt, and zsh integration from the latest
-# GitHub release into ~/.nsh, then wires up the zsh integration. nsh is NOT put
-# on your PATH; the integration runs it from ~/.nsh only when a command line
-# starts with "nsh ".
+# Downloads the zsh integration and system prompt into ~/.nsh and wires up zsh.
+# nsh is not a binary; the integration runs Apple Intelligence via apfel, only
+# when a command line starts with "nsh ".
 #
 # Usage:
 #   curl -fsSL https://raw.githubusercontent.com/FlexDW/nsh/main/install.sh | sh
-#
-# Environment:
-#   NSH_DIR   install location (default: ~/.nsh)
 
 set -eu
 
-REPO="FlexDW/nsh"
-DEST="${NSH_DIR:-$HOME/.nsh}"
-BASE="https://github.com/$REPO/releases/latest/download"
+DEST="$HOME/.nsh"
+BASE="https://raw.githubusercontent.com/FlexDW/nsh/main"
 
-case "$(uname -s)-$(uname -m)" in
-    Darwin-arm64) ;;
-    *)
-        echo "error: nsh requires macOS on Apple Silicon (arm64)." >&2
-        exit 1
-        ;;
-esac
+if [ "$(uname -s)" != "Darwin" ]; then
+    echo "error: nsh requires macOS." >&2
+    exit 1
+fi
 
 echo "Installing nsh into $DEST ..."
 mkdir -p "$DEST"
 
 fetch() {
-    # $1 = remote asset name, $2 = local destination
+    # $1 = file name in the repo, $2 = local destination
     curl -fsSL -o "$2" "$BASE/$1" || {
         echo "error: failed to download $1 from $BASE" >&2
         exit 1
     }
 }
 
-fetch nsh-macos-arm64 "$DEST/nsh"
-fetch system.txt "$DEST/system.txt"
 fetch nsh.zsh "$DEST/nsh.zsh"
-chmod +x "$DEST/nsh"
+fetch system.txt "$DEST/system.txt"
 
 # Wire up ~/.zshrc (idempotent).
 ZSHRC="$HOME/.zshrc"
