@@ -1,0 +1,6 @@
+.venv/
+.cache/
+weights/
+*.gguf
+*.pth
+__pycache__/
