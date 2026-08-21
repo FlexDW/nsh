@@ -16,13 +16,17 @@ Nothing runs until you press Enter a second time yourself.
 
 ## Install
 
-```sh
-# 1. apfel — the Apple Intelligence CLI nsh calls
-brew install apfel
-#    then turn it on: System Settings > Apple Intelligence & Siri, and let the
-#    on-device model download.
+1. Install `apfel`, the Apple Intelligence CLI nsh calls:
 
-# 2. Configure nsh
+```sh
+brew install apfel
+```
+
+Then turn it on: System Settings > Apple Intelligence & Siri, and let the on-device model download.
+
+2. Configure nsh:
+
+```sh
 curl -fsSL https://raw.githubusercontent.com/FlexDW/nsh/main/install.sh | sh
 ```
 > What does this script do? It downloads `nsh.zsh` and `system.txt` into
