@@ -1,4 +1,4 @@
-// Lightweight test harness for nls non-model logic.
+// Lightweight test harness for nsh non-model logic.
 // No external framework: asserts increment a failure counter and print.
 
 #include <cstdio>
@@ -80,16 +80,6 @@ static void test_arg_parsing() {
     ParsedArgs a = parse_args({});
     check(a.mode == ParsedArgs::Mode::Error, "no args -> error");
 
-    ParsedArgs h = parse_args({"--help"});
-    check(h.mode == ParsedArgs::Mode::Help, "--help");
-    ParsedArgs h2 = parse_args({"-h"});
-    check(h2.mode == ParsedArgs::Mode::Help, "-h");
-
-    ParsedArgs v = parse_args({"--version"});
-    check(v.mode == ParsedArgs::Mode::Version, "--version");
-    ParsedArgs v2 = parse_args({"-V"});
-    check(v2.mode == ParsedArgs::Mode::Version, "-V");
-
     ParsedArgs one = parse_args({"find files containing triggerOp("});
     check(one.mode == ParsedArgs::Mode::Request &&
               one.request == "find files containing triggerOp(",
@@ -100,8 +90,8 @@ static void test_arg_parsing() {
               many.request == "find files containing triggerOp(",
           "multi-arg request joined");
 
-    ParsedArgs dd = parse_args({"--", "--version"});
-    check(dd.mode == ParsedArgs::Mode::Request && dd.request == "--version",
+    ParsedArgs dd = parse_args({"--", "--help"});
+    check(dd.mode == ParsedArgs::Mode::Request && dd.request == "--help",
           "-- treats following flags as request");
 
     ParsedArgs dd2 = parse_args({"--", "foo", "&&", "bar"});

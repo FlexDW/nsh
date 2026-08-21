@@ -1,5 +1,5 @@
-#ifndef NLS_CLEAN_H
-#define NLS_CLEAN_H
+#ifndef NSH_CLEAN_H
+#define NSH_CLEAN_H
 
 #include <string>
 
@@ -21,4 +21,4 @@ struct CleanResult {
 // then returns the first non-empty line. Empty output is rejected.
 CleanResult clean_model_output(const std::string &raw);
 
-#endif // NLS_CLEAN_H
+#endif // NSH_CLEAN_H

@@ -1,25 +1,24 @@
 #!/usr/bin/env bash
-# Manual integration test for nls.
+# Manual integration test for nsh.
 #
-# This exercises the real model and llama-cli, so it is NOT run by `make test`.
-# It requires NLS_MODEL to point at a local .gguf instruction model and
-# llama-cli to be installed (or NLS_LLAMA_CLI to be set).
+# This exercises the real model via apfel, so it is NOT run by `make test`.
+# It requires apfel to be installed and Apple Intelligence to be enabled.
 #
 # Usage:
-#   NLS_MODEL=/path/to/model.gguf ./tests/integration.sh
+#   ./tests/integration.sh
 
 set -u
 
-NLS_BIN="${NLS_BIN:-./build/nls}"
+NSH_BIN="${NSH_BIN:-./build/nsh}"
 
-if [[ ! -x "$NLS_BIN" ]]; then
-    echo "nls binary not found at $NLS_BIN (run 'make' first)" >&2
+if [[ ! -x "$NSH_BIN" ]]; then
+    echo "nsh binary not found at $NSH_BIN (run 'make' first)" >&2
     exit 1
 fi
 
-if [[ -z "${NLS_MODEL:-}" ]]; then
-    echo "NLS_MODEL is not set; skipping model integration test." >&2
-    echo "Set NLS_MODEL=/path/to/model.gguf to run it." >&2
+if ! command -v apfel >/dev/null 2>&1 && [[ -z "${NSH_APFEL:-}" ]]; then
+    echo "apfel not found; skipping model integration test." >&2
+    echo "Install apfel (e.g. 'brew install apfel') to run it." >&2
     exit 0
 fi
 
@@ -35,10 +34,10 @@ fail=0
 for req in "${requests[@]}"; do
     echo "----------------------------------------"
     echo "request: $req"
-    out="$("$NLS_BIN" -- "$req")"
+    out="$("$NSH_BIN" -- "$req")"
     rc=$?
     if [[ $rc -ne 0 ]]; then
-        echo "  ERROR: nls exited with $rc" >&2
+        echo "  ERROR: nsh exited with $rc" >&2
         fail=1
         continue
     fi

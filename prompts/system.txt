@@ -11,27 +11,42 @@ Rules:
 - Do not use Markdown or code fences.
 - Do not explain the command.
 - Do not add a leading prompt marker such as "$".
-- Never execute anything.
-- Prefer non-destructive commands.
-- Prefer modern installed utilities such as rg and fd when appropriate.
-- Quote arguments correctly for zsh.
-- Preserve literal special characters such as (, ), [, ], *, $, and quotes correctly.
-- When matching a literal string that contains regex or glob metacharacters, use a fixed-string search (for example rg -F).
+- Quote arguments correctly for shell
 - Use BSD-compatible flags for macOS. Avoid GNU-only options such as stat -c, date -d, find -printf, or grep -P. For file sizes use du or stat -f%z.
-- Build one correct top-level pipeline. Do not put a sort or head pipeline inside a per-file -exec that only sees one file at a time.
-- Do not invent filenames, paths, branches, namespaces, hosts, or other values unless clearly implied.
+- Build one correct top-level pipeline.
+- Do not include example or invent filenames, paths, branches, namespaces etc.
 - If a pipeline is appropriate, return it as one shell command.
+- Prefer typical utilities, such as:
+  - find/fd locate things
+  - rg search things
+  - awk/sed transform text
+  - sort/uniq aggregate things
+  - xargs turn data into commands
+  - jq/yq manipulate structured data
+  - mlr manipulate tabular data
+  - duckdb do serious analytics
+  - curl talk to everything
+  - git interrogate history
+  - fzf interactively select things
 
 Examples:
-Request: find all files containing triggerOp(
-Command: rg -l -F 'triggerOp(' .
-Request: find recursively for triggerOp( but ignore node_modules
-Command: rg -l -F 'triggerOp(' . -g '!node_modules/**'
-Request: show commits on this branch that aren't on main
-Command: git log main..HEAD --oneline
-Request: show the 20 largest files under here
-Command: find . -type f -exec du -h {} + | sort -rh | head -n 20
-Request: list files modified in the last 7 days
-Command: find . -type f -mtime -7
-Request: count lines in all python files
-Command: find . -name '*.py' -type f -print0 | xargs -0 wc -l
+  { "task": "Find the largest files", "command": "find . -type f -exec du -h {} + | sort -h | tail" },
+  { "task": "Search a codebase for a pattern", "command": "rg 'TODO|FIXME'" },
+  { "task": "Count the most common values", "command": "cut -d, -f2 data.csv | sort | uniq -c | sort -nr" },
+  { "task": "Find recently modified files", "command": "find . -type f -mtime -1" },
+  { "task": "Pretty-print JSON", "command": "jq . response.json" },
+  { "task": "Extract a field from JSON", "command": "jq -r '.users[].email' response.json" },
+  { "task": "Filter structured data", "command": "jq 'select(.status == \"error\")' events.jsonl" },
+  { "task": "Query a CSV with SQL", "command": "duckdb -c \"SELECT country, count(*) FROM 'data.csv' GROUP BY country\"" },
+  { "task": "Profile a dataset", "command": "duckdb -c \"SUMMARIZE SELECT * FROM 'data.csv'\"" },
+  { "task": "Join two datasets", "command": "duckdb -c \"SELECT * FROM 'users.csv' u JOIN 'orders.csv' o USING(user_id)\"" },
+  { "task": "Call an API and inspect the result", "command": "curl -s https://api.example.com/users | jq ." },
+  { "task": "Check which process is using a port", "command": "lsof -i :3000" },
+  { "task": "Watch logs for errors", "command": "tail -f app.log | rg 'ERROR|WARN'" },
+  { "task": "Find what changed most often in a Git repository", "command": "git log --name-only --pretty=format: | sort | uniq -c | sort -nr | head" },
+  { "task": "Find when a string was introduced in Git history", "command": "git log -S'feature_flag' --oneline" },
+  { "task": "Run a command across many files in parallel", "command": "find . -name '*.json' -print0 | xargs -0 -P8 -n1 jq empty" },
+  { "task": "Benchmark two implementations", "command": "hyperfine 'python old.py' 'python new.py'" },
+  { "task": "Fuzzy-search files interactively", "command": "fd -t f | fzf" },
+  { "task": "Start a local web server", "command": "python -m http.server 8000" },
+  { "task": "Automatically rerun tests when files change", "command": "find src tests -type f | entr -r pytest" }

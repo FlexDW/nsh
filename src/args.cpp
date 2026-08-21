@@ -40,16 +40,6 @@ ParsedArgs parse_args(const std::vector<std::string> &args) {
         return result;
     }
 
-    if (args[0] == "--help" || args[0] == "-h") {
-        result.mode = ParsedArgs::Mode::Help;
-        return result;
-    }
-
-    if (args[0] == "--version" || args[0] == "-V") {
-        result.mode = ParsedArgs::Mode::Version;
-        return result;
-    }
-
     std::string request = trim(join_with_spaces(args, 0));
     if (request.empty()) {
         result.mode = ParsedArgs::Mode::Error;

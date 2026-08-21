@@ -1,12 +1,12 @@
-# Natural Language Shell
+# Natural Shell
 
-`nls` translates a natural-language request into a shell command using a
-**local** GGUF instruction model. It runs fully offline via
-[`llama.cpp`](https://github.com/ggml-org/llama.cpp) — no HTTP API, no Ollama,
-no cloud calls, no Hugging Face dependency at runtime.
+`nsh` translates a natural-language request into a shell command using
+**Apple Intelligence**, invoked on-device through the `apfel` CLI — no HTTP
+API, no Ollama, no GGUF files, no cloud calls. Inference runs locally on your
+Mac.
 
 ```
-$ nls find all files containing triggerOp( but ignore node_modules
+$ nsh find all files containing triggerOp( but ignore node_modules
 ```
 
 With the zsh integration enabled, pressing Enter replaces your command line
@@ -20,186 +20,156 @@ You then press Enter a second time to run it yourself.
 
 ## Quick start
 
+Install `apfel` and enable Apple Intelligence, then run the installer:
+
 ```sh
-# 1. Toolchain (once): Xcode Command Line Tools for the C++ compiler
-xcode-select --install
+# apfel is the Apple Intelligence CLI that nsh calls at runtime
+brew install apfel
+# then: System Settings > Apple Intelligence & Siri > turn ON and let the
+# on-device model download.
 
-# 2. Install the local inference runtime (provides llama-simple)
-brew install llama.cpp
-
-# 3. Build and install nls
-make install                       # -> ~/.local/bin/nls  (+ ~/.local/share/nls)
-
-# 4. Point nls at a local GGUF instruction model (you supply this file)
-export NLS_MODEL="$HOME/.local/share/nls/model.gguf"
-
-# 5. Enable the zsh integration (add to ~/.zshrc to persist)
-source "$HOME/.local/share/nls/nls.zsh"
+# Install nsh (binary + prompt + zsh integration) into ~/.nsh and wire up zsh
+curl -fsSL https://raw.githubusercontent.com/FlexDW/nsh/main/install.sh | sh
 ```
 
-Then type a request and press Enter:
+Start a new shell (or `source ~/.nsh/nsh.zsh`), then type a request and press
+Enter — the integration replaces your line with the generated command for you
+to review:
 
 ```
-$ nls find all rust files modified in the last week containing unsafe
+$ nsh find all rust files modified in the last week containing unsafe
 ```
 
-`llama.cpp` is a community/`ggml-org` project (not Meta), and Homebrew is a
-third-party package manager — both are just redistributing the open-source
-runtime. See [Dependencies](#3-dependencies) for the manual/download
-alternatives. `nls` never downloads a model; obtaining a GGUF is up to you.
+`nsh` is **not** put on your `PATH`. The zsh integration runs it from `~/.nsh`
+only for lines that begin with `nsh `. Edit `~/.nsh/system.txt` to tune the
+prompt.
+
+## Install from a release
+
+The installer pulls from the latest
+[GitHub release](https://github.com/FlexDW/nsh/releases), which carries
+`nsh-macos-arm64`, `system.txt`, `nsh.zsh`, and `install.sh`. To install by
+hand:
+
+```sh
+mkdir -p ~/.nsh && cd ~/.nsh
+base=https://github.com/FlexDW/nsh/releases/latest/download
+curl -fsSL -o nsh "$base/nsh-macos-arm64" && chmod +x nsh
+curl -fsSL -o system.txt "$base/system.txt"
+curl -fsSL -o nsh.zsh "$base/nsh.zsh"
+echo 'source "$HOME/.nsh/nsh.zsh"' >> ~/.zshrc
+```
+
+## Build from source
+
+```sh
+xcode-select --install     # C++ toolchain, once
+make                       # -> build/nsh
+make test                  # unit tests
+```
+
+Point the integration at your local build with `NSH_BIN`:
+
+```sh
+NSH_BIN="$PWD/build/nsh" source shell/nsh.zsh
+```
+
+Cutting a release: build the binary locally with `make dist` (writes
+`dist/nsh-macos-arm64`) and commit it, then run the **Release** workflow
+([.github/workflows/release.yml](.github/workflows/release.yml)) from the
+Actions tab, choosing a `patch`/`minor`/`major` bump (or a `version_override`
+for the first release). It runs on Linux and publishes the committed binary
+plus `system.txt`, `nsh.zsh`, and `install.sh` — no macOS CI minutes needed.
 
 ## 1. What it does
 
-`nls` takes a natural-language description of what you want to do and prints a
+`nsh` takes a natural-language description of what you want to do and prints a
 single shell command that does it. It is designed for zsh on macOS (Apple
-Silicon supported through llama.cpp/Metal).
+Silicon), and runs entirely on-device through Apple Intelligence.
 
 ## 2. Safety model
 
-**`nls` generates text. It never executes the generated command.**
+**`nsh` generates text. It never executes the generated command.**
 
 - The generated command is only written to stdout (or inserted into your zsh
   command buffer for you to review).
-- `nls` never calls `eval`, `exec`, `system()`, or `popen()` on generated text.
-- The only subprocess `nls` launches is the local inference runtime
-  (`llama-simple`), invoked via `fork`/`execv` with an explicit argument vector —
-  your request is passed as a single argument and is never interpreted by a
-  shell.
+- `nsh` never calls `eval`, `exec`, `system()`, or `popen()` on generated text.
+- The only subprocess `nsh` launches is `apfel`, invoked via `fork`/`execv`
+  with an explicit argument vector — your request is passed as a single
+  argument and is never interpreted by a shell.
 - The zsh integration replaces the command buffer and stops; it does **not**
   auto-execute. Nothing runs until you press Enter yourself.
 
 ## 3. Dependencies
 
-- macOS (primary target; Apple Silicon supported).
+- macOS with Apple Intelligence supported and enabled (Apple Silicon).
 - A C++17 compiler (Apple Clang from the Xcode Command Line Tools:
   `xcode-select --install`).
-- `llama.cpp`'s `llama-simple` executable at runtime (it ships with llama.cpp).
-  It is an open-source project by `ggml-org` (not Meta). Install it either way:
+- The `apfel` CLI at runtime (Apple Intelligence from the command line):
 
   ```sh
-  brew install llama.cpp          # simplest on macOS (Homebrew, third-party)
+  brew install apfel
   ```
 
-  Or download an official prebuilt binary from the llama.cpp repo:
-  <https://github.com/ggml-org/llama.cpp/releases> — grab the macOS Apple
-  Silicon asset (`llama-b<NNNN>-bin-macos-arm64.zip`), unzip it, and either add
-  its `bin/` to your `PATH` or set `NLS_LLAMA_SIMPLE=/path/to/llama-simple`.
-
-  nls uses `llama-simple` (not the interactive `llama-cli`) so it gets clean,
-  scriptable, single-shot output. If it is not on your `PATH`, set
-  `NLS_LLAMA_SIMPLE=/path/to/llama-simple`.
-- A local GGUF instruction model (see below). Obtaining a model is currently
-  your responsibility; `nls` does not download anything.
+  If it is not on your `PATH`, set `NSH_APFEL=/path/to/apfel`.
+- Apple Intelligence turned on (System Settings > Apple Intelligence & Siri),
+  with the on-device model downloaded. `nsh` sends nothing to the cloud.
 
 ## 4. Building
 
 ```sh
-make        # builds build/nls
+make        # builds build/nsh
 make test   # builds and runs the unit tests
 ```
 
-Install into `~/.local`:
+To use your local build with the zsh integration, point `NSH_BIN` at it:
 
 ```sh
-make install
-# installs:
-#   ~/.local/bin/nls
-#   ~/.local/share/nls/system.txt
-#   ~/.local/share/nls/nls.zsh
+NSH_BIN="$PWD/build/nsh" source shell/nsh.zsh
 ```
 
-Make sure `~/.local/bin` is on your `PATH`. Override the location with
-`make install PREFIX=/somewhere`.
+`make dist` stages the binary at `dist/nsh-macos-arm64` for a release (see
+[Install from a release](#install-from-a-release)).
 
-## 5. Specifying a local GGUF model
+## 5. Model backend
 
-`nls` needs a local GGUF instruction model. Point `NLS_MODEL` at it:
+`nsh` uses Apple Intelligence's on-device model through `apfel`; there is no
+model file to supply. `apfel` handles the chat template and returns just the
+generated command, so `nsh` only appends runtime context (`cwd`, `os`,
+`architecture`) to the system prompt.
 
-```sh
-export NLS_MODEL="$HOME/.local/share/nls/model.gguf"   # any path you like
-```
+Tunables (all optional, see [config/example.conf](config/example.conf)):
 
-`nls` is model-agnostic. Any small-ish GGUF instruction model works, for
-example Llama 3.2 1B/3B Instruct, or a Gemma-class small instruction model.
-1–4B instruction models are a good latency/quality tradeoff.
+- `NSH_APFEL` — path to apfel (default: found on `PATH`).
+- `NSH_MAX_TOKENS` — max output tokens (default: 150).
+- `NSH_TEMPERATURE` — sampling temperature; 0 = deterministic (default: 0).
+- `NSH_APFEL_ARGS` — extra args passed through to apfel.
 
-If `NLS_MODEL` is unset, `nls` prints:
-
-```
-nls: NLS_MODEL is not set
-nls: set NLS_MODEL=/path/to/model.gguf
-```
-
-See [config/example.conf](config/example.conf) for all supported environment
-variables.
-
-### Generating a GGUF from Llama weights (no Hugging Face)
-
-If you don't already have a `.gguf`, the [convert/](convert/) subfolder turns
-Llama weights into one using PyTorch and llama.cpp's converter. It is a
-[`uv`](https://docs.astral.sh/uv/)-managed Python project (latest Python), and
-it downloads nothing from Hugging Face — the converter comes from a shallow
-clone of the llama.cpp GitHub repo, pinned to the same build as your runtime
-(`b10470`).
-
-One-time setup (installs PyTorch + the pinned converter into `convert/.venv`):
-
-```sh
-make convert-setup
-```
-
-**Option A — Meta's CDN (no Hugging Face).** Accept the license at
-<https://www.llama.com/llama-downloads>, which gives you a per-user *signed
-URL*. Then:
-
-```sh
-make model-meta META_MODEL=Llama-3.2-1B-Instruct MODEL_SIZE=1B
-# or the sharper 3B:
-make model-meta META_MODEL=Llama-3.2-3B-Instruct MODEL_SIZE=3B
-```
-
-You'll be prompted to paste the signed URL (input hidden), or you can
-`export LLAMA_SIGNED_URL='https://.../*?Policy=...'` first. This downloads the
-original checkpoint (`consolidated.00.pth`, `params.json`, `tokenizer.model`)
-straight from Meta's CDN, then does an **original → HF → GGUF** conversion,
-fully offline, and quantizes to a GGUF at `MODEL_OUT`. (Llama 3.x uses a
-tiktoken tokenizer that requires the HF intermediate step; it is built locally
-from your `tokenizer.model` with no Hugging Face access.)
-
-**Option B — a local HF-format directory you already have** (`config.json` +
-weights):
-
-```sh
-make model SRC_MODEL=/path/to/Llama-3.2-3B-Instruct-hf
-```
-
-Both write to `MODEL_OUT` (default `~/.local/share/nls/model.gguf`) and print
-the `export NLS_MODEL=...` line to use. Tunables: `MODEL_OUT`, `OUTTYPE`
-(default `f16`), `QUANTIZE` (default `Q4_K_M`), `MODEL_SIZE` (`1B`/`3B`). The
-signed URL is sensitive — it is only ever read via the hidden prompt or the
-environment, never logged.
+If Apple Intelligence is not enabled, `apfel` fails and `nsh` reports the
+error; run with `NSH_DEBUG=1` to see apfel's diagnostics.
 
 ## 6. Installing the zsh integration
 
-Source the integration script from your `~/.zshrc`:
+The installer adds the source line for you. To do it by hand, add one of these
+to your `~/.zshrc`:
 
 ```sh
-# if you ran `make install`
-source "$HOME/.local/share/nls/nls.zsh"
+# installed from a release (install.sh) — binary lives in ~/.nsh
+source "$HOME/.nsh/nsh.zsh"
 
-# or straight from the repo
-source /path/to/nls/shell/nls.zsh
+# or straight from the repo, pointing at your local build
+NSH_BIN="/path/to/nsh/build/nsh" source /path/to/nsh/shell/nsh.zsh
 ```
 
 Reload your shell (`exec zsh`) and you're set. The integration only affects
-lines that begin with `nls `; every other command behaves exactly as before.
+lines that begin with `nsh `; every other command behaves exactly as before.
 
 ## 7. Example usage
 
 Direct CLI (prints the command, does not run it):
 
 ```sh
-$ nls "show commits on this branch that aren't on main"
+$ nsh "show commits on this branch that aren't on main"
 git log main..HEAD --oneline
 ```
 
@@ -207,13 +177,13 @@ Requests may be quoted or passed as separate words; use `--` to pass a request
 that starts with `-` or contains shell metacharacters verbatim:
 
 ```sh
-$ nls -- "foo && bar"
+$ nsh -- "foo && bar"
 ```
 
 With the zsh integration, just type and press Enter:
 
 ```
-$ nls find the 20 largest files under here
+$ nsh find the 20 largest files under here
 # becomes, after Enter:
 $ find . -type f -exec du -h {} + | sort -rh | head -n 20
 ```
@@ -221,65 +191,54 @@ $ find . -type f -exec du -h {} + | sort -rh | head -n 20
 More requests to try:
 
 ```
-nls find all files containing triggerOp(
-nls find recursively for triggerOp( but ignore node_modules
-nls commits on this branch not main
-nls find all rust files modified in the last week containing unsafe
+nsh find all files containing triggerOp(
+nsh find recursively for triggerOp( but ignore node_modules
+nsh commits on this branch not main
+nsh find all rust files modified in the last week containing unsafe
 ```
-
-`nls --help` and `nls --version` are also available.
 
 ## 8. Architecture
 
 ```
-nls (C++17 executable)
+nsh (C++17 executable)
 ├── args.{h,cpp}   argument parsing (quoted / multi-word / -- passthrough)
 ├── clean.{h,cpp}  output cleanup (trim, strip code fence, first line, validate)
-└── nls.cpp        prompt building + inference subprocess + main
+└── nsh.cpp        prompt building + inference subprocess + main
 ```
 
 Flow:
 
 1. Parse the request (all argv joined; everything after `--` is verbatim).
-2. Load the system prompt (`prompts/system.txt`, an installed copy, or a
-   built-in fallback) and append dynamic context: `cwd`, `shell`, `os`,
-   `architecture`. No directory listings, file contents, secrets, or arbitrary
-   environment variables are sent to the model.
-3. Wrap it in the Llama 3 chat template and run inference by invoking
-   `llama-simple` as a subprocess, capturing stdout. This is isolated in
-   `run_inference()` so it can be replaced later.
-4. Split the reply off the echoed prompt, drop Llama special tokens, strip a
-   single surrounding Markdown fence and a stray `$ ` prompt, take the first
-   non-empty line, and reject empty output.
+2. Load the system prompt from `~/.nsh/system.txt` (erroring if it is missing)
+   and append dynamic context: `cwd`, `shell`, `os`, `architecture`. No
+   directory listings, file contents, secrets, or arbitrary environment
+   variables are sent to the model.
+3. Run inference by invoking `apfel` as a subprocess (system prompt via `-s`,
+   request as the positional argument after `--`), capturing stdout. This is
+   isolated in `run_inference()` so it can be replaced later.
+4. Strip a single surrounding Markdown fence and a stray `$ ` prompt, take the
+   first non-empty line, and reject empty output.
 5. Print the command to stdout; all diagnostics go to stderr.
 
-**Inference defaults:** greedy/deterministic (llama-simple), ~150 output
-tokens, single turn, no conversation history. Tunable via `NLS_MAX_TOKENS`,
-`NLS_NGL`, and `NLS_LLAMA_ARGS`.
+**Inference defaults:** deterministic (`--temperature 0`), ~150 output tokens,
+single turn, no conversation history. Tunable via `NSH_MAX_TOKENS`,
+`NSH_TEMPERATURE`, and `NSH_APFEL_ARGS`.
 
 ### Why a subprocess
 
-V1 shells out to `llama-simple` rather than linking `libllama` directly. This
-keeps the build to a single-file Makefile with no external build dependencies
-and works with a stock `brew install llama.cpp`. (`llama-simple` is used rather
-than the interactive `llama-cli`, which on recent builds forces a REPL and
-pollutes stdout.) The subprocess boundary lives entirely in `run_inference()`,
-so a direct `libllama` integration can replace it in V2 without touching
-argument parsing, prompt building, or output cleanup.
+`nsh` shells out to `apfel` rather than linking any inference library directly.
+This keeps the build to a single-file Makefile with no external build
+dependencies. The subprocess boundary lives entirely in `run_inference()`, so a
+different backend (another local model, a cloud API) can replace it without
+touching argument parsing, prompt building, or output cleanup.
 
 ## 9. Known limitations
 
-- Requires `llama-simple` on `PATH` (or `NLS_LLAMA_SIMPLE`). No direct
-  `libllama` linking yet.
-- The model is loaded on every invocation, so there is per-call startup
-  latency. A persistent model process is planned for V2.
-- Output quality depends entirely on the chosen GGUF model; small models (e.g.
-  Llama 3.2 1B) can produce imperfect commands. 3B is noticeably better. Always
-  review before running.
-- The prompt uses the Llama 3 chat template. Other model families may need a
-  different template.
-- zsh + macOS only. bash/fish/Linux are out of scope for V1.
-- `NLS_LLAMA_ARGS` is split on whitespace only (no quoting).
+- Requires `apfel` on `PATH` (or `NSH_APFEL`) and Apple Intelligence enabled.
+- Output quality depends on Apple's on-device model. Always review before
+  running.
+- zsh + macOS only. bash/fish/Linux are out of scope.
+- `NSH_APFEL_ARGS` is split on whitespace only (no quoting).
 
 ## Testing
 
@@ -289,5 +248,5 @@ argument parsing, prompt building, or output cleanup.
   script (not run by `make test`):
 
   ```sh
-  NLS_MODEL=/path/to/model.gguf ./tests/integration.sh
+  ./tests/integration.sh
   ```
